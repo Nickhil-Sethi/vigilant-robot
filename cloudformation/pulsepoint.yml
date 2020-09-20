@@ -1,0 +1,141 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Pulsepoint Code Challenge Template
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  
+  DatabaseUser:
+    Default: postgres
+    Type: String
+    Description: Database admin account name
+    MinLength: 5
+    MaxLength: 16
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Name must begin with a letter and contain only alphanumeric characters
+
+  DatabasePassword:
+    NoEcho: true
+    Type: String
+    Description: Database admin account password
+    MinLength: 6
+    MaxLength: 41
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Password must contain only alphanumeric characters
+  
+  GithubAuthToken:
+    NoEcho: true 
+    Type: String
+    Description: Github auth token for challenge repo
+    MinLength: 1
+    MaxLength: 41
+
+Resources:
+  DBSecurityGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      DBSecurityGroupIngress:
+        EC2SecurityGroupName:
+          Ref: WebServerSecurityGroup
+      GroupDescription: Frontend Access
+
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access via port 80 and SSH access
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp: 0.0.0.0/0
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBSecurityGroups: 
+        - Ref: DBSecurityGroup
+      Engine: postgres
+      DBName: ClayDB
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      DBInstanceClass: db.t3.medium
+      StorageType: gp2
+      MultiAZ: false
+      StorageEncrypted: false
+      AllocatedStorage: 5
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config: 
+          packages:
+            yum:
+              - gcc
+              - python36
+              - git
+              - python-setuptools 
+              - python-devel 
+              - postgresql-devel
+    Properties:
+      InstanceType: 't2.large'
+      SecurityGroups: [!Ref 'WebServerSecurityGroup']
+      KeyName: !Ref 'KeyName'
+      ImageId: 'ami-0841edc20334f9287'
+      # why was this not working?
+      # /opt/aws/bin/cfn-init –s ${AWS::StackName} -r EC2Instance -c InstallAndRun --region=${AWS::Region}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum install -y aws-cfn-bootstrap
+          yum install -y gcc python36 git python-setuptools python-devel postgresql-devel
+          echo GITHUB_AUTH=${GithubAuthToken} >> /etc/environment
+          echo DB_USER=${DatabaseUser} >> /etc/environment
+          echo DB_PASS=${DatabasePassword} >> /etc/environment
+          echo DB_ENDPOINT=${Database.Endpoint.Address} >> /etc/environment
+          echo DB_PORT=${Database.Endpoint.Port} >> /etc/environment
+          cd /home/ec2-user; git clone https://Nickhil-Sethi:${GithubAuthToken}@github.com/Nickhil-Sethi/data-management-interview-nsethi.git
+          chmod -R 777 data-management-interview-nsethi
+
+Outputs:
+  Name:
+    Description: RDS Stack Name
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub ${AWS::StackName}-Name
+
+  RdsDbId:
+    Description: RDS Database ID
+    Value: !Ref Database
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseID
+
+  RdsDbURL:
+    Description: RDS Database URL
+    Value: !GetAtt Database.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseURL
+
+  DbUser:
+    Description: RDS Database admin account user
+    Value: !Ref DatabaseUser
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseUser
+
+  DbPassword:
+    Description: RDS Database admin account password
+    Value: !Ref DatabasePassword
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabasePassword
+
+  EC2Endpoint:
+    Description: EC2 server's endpoint
+    Value: !GetAtt EC2Instance.PublicDnsName
+
+  GithubAuthToken:
+    Description: Github Token
+    Value: !Ref GithubAuthToken
