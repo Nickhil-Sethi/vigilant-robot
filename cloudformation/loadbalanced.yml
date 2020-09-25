@@ -40,19 +40,12 @@ Resources:
       SecurityGroups: [!Ref 'WebServerSecurityGroup']
       KeyName: !Ref 'KeyName'
       ImageId: 'ami-0841edc20334f9287'
-      UserData: !Base64 
-        'Fn::Join':
-          - ''
-          - - |
-              #!/bin/bash -xe
-            - |
-              # Install the files and packages from the metadata
-            - '/opt/aws/bin/cfn-init -v '
-            - '         --stack '
-            - !Ref 'AWS::StackName'
-            - '         --resource EC2InstanceV1 '
-            - '         --region '
-            - !Ref 'AWS::Region'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          # Install the files and packages from the metadata
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2InstanceV1 --region ${AWS::Region}
+          git clone https://github.com/Nickhil-Sethi/vigilant-robot.git /home/ec2-user
 
 Outputs:
   Name:
