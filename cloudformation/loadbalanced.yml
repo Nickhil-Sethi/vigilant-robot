@@ -1,4 +1,3 @@
----
 AWSTemplateFormatVersion: 2010-09-09
 
 Description: loadbalanced service
@@ -24,17 +23,16 @@ Resources:
         ToPort: '8080'
         CidrIp: '0.0.0.0/0'
 
-  EC2InstanceV1:
+  EC2InstanceV7:
     Type: 'AWS::EC2::Instance'
     Metadata:
       'AWS::CloudFormation::Init':
-        # THIS MUST BE NAMED DEFAULT
-        default:
+        config:
           packages:
             yum:
-              - git
-              - golang
-
+              git: []
+              golang: []
+              
     Properties:
       InstanceType: 't2.large'
       SecurityGroups: [!Ref 'WebServerSecurityGroup']
@@ -44,9 +42,10 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
           # Install the files and packages from the metadata
-          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2InstanceV1 --region ${AWS::Region}
-          git clone https://github.com/Nickhil-Sethi/vigilant-robot.git /home/ec2-user
-
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2InstanceV7 --region ${AWS::Region}
+          cd /home/ec2-user; git clone https://github.com/Nickhil-Sethi/vigilant-robot.git
+          su ec2-user
+          cd vigilant-robot/; go build -o bin ./hello-world/; ./bin
 Outputs:
   Name:
     Description: Stack Name
@@ -56,4 +55,4 @@ Outputs:
 
   EC2Endpoint:
     Description: EC2 server's endpoint
-    Value: !GetAtt EC2InstanceV1.PublicDnsName
+    Value: !GetAtt EC2InstanceV7.PublicDnsName
