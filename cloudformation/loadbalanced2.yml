@@ -64,15 +64,17 @@ Resources:
         MaxBatchSize: 1
         PauseTime: PT15M
         WaitOnResourceSignals: true
+
   LaunchConfig:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Metadata:
-      AWS::CloudFormation::Init:
+      'AWS::CloudFormation::Init':
         config:
           packages:
-            git: []
-            golang: []
-
+            yum:
+              git: []
+              golang: []
+            
     Properties:
       AssociatePublicIpAddress: true
       InstanceType: !Ref 'InstanceType'
@@ -83,13 +85,13 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
-          # Install the files and packages from the metadata
+          yum update -y aws-cfn-bootstrap
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --region ${AWS::Region}
           iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8080
           cd /home/ec2-user; git clone https://github.com/Nickhil-Sethi/vigilant-robot.git
           su ec2-user; export HOME=/home/ec2-user
-          cd vigilant-robot/; go build -o bin ./hello-world/; ./bin
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LaunchConfig --region ${AWS::Region}
+          cd vigilant-robot/; go build -o bin ./hello-world/; ./bin &
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WebServerGroup --region ${AWS::Region}
           
   NetworkLoadBalancer:
     Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
