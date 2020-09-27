@@ -60,10 +60,10 @@ Resources:
         Timeout: PT15M
     UpdatePolicy:
       AutoScalingRollingUpdate:
-        MinInstancesInService: '1'
-        MaxBatchSize: '1'
+        MinInstancesInService: 1
+        MaxBatchSize: 1
         PauseTime: PT15M
-        WaitOnResourceSignals: 'true'
+        WaitOnResourceSignals: true
   LaunchConfig:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Metadata:
@@ -103,7 +103,7 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref NLBTargetGroup
       LoadBalancerArn: !Ref NetworkLoadBalancer
-      Port: '80'
+      Port: 80
       Protocol: TCP
   NLBTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
@@ -117,12 +117,12 @@ Resources:
       GroupDescription: Enable SSH access and HTTP access on the inbound port
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: '80'
-          ToPort: '80'
+          FromPort: 80
+          ToPort: 80
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: '22'
-          ToPort: '22'
+          FromPort: 22
+          ToPort: 22
           CidrIp: !Ref SSHLocation
       VpcId: !Ref VpcId
 Outputs:
