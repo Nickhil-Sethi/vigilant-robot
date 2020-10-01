@@ -7,9 +7,6 @@ Parameters:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
-  Subnets:
-    Description: Choose which subnets the Network Load Balancer should be deployed to
-    Type: List<AWS::EC2::Subnet::Id>
 
 Resources:
   WebServerSecurityGroup:
@@ -26,49 +23,30 @@ Resources:
         ToPort: '8080'
         CidrIp: '0.0.0.0/0'
 
-  LaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  EC2InstanceV9:
+    Type: 'AWS::EC2::Instance'
     Metadata:
-      AWS::CloudFormation::Init:
+      'AWS::CloudFormation::Init':
         config:
           packages:
-            git: []
-            golang: []
+            yum:
+              git: []
+              golang: []
+              
     Properties:
-      AssociatePublicIpAddress: true
       InstanceType: 't2.large'
       SecurityGroups: [!Ref 'WebServerSecurityGroup']
       KeyName: !Ref 'KeyName'
       ImageId: 'ami-0841edc20334f9287'
-      LaunchConfigurationName: 'LaunchConfiguration'
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
           # Install the files and packages from the metadata
-          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region}
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2InstanceV9 --region ${AWS::Region}
           iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8080
           cd /home/ec2-user; git clone https://github.com/Nickhil-Sethi/vigilant-robot.git
           su ec2-user; export HOME=/home/ec2-user
           cd vigilant-robot/; go build -o bin ./hello-world/; ./bin
-
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: 'TheLoadBalancer'
-      Type: 'network'
-      Subnets: !Ref 'Subnets'        
-
-  AutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    Properties:
-      VPCZoneIdentifier: !Ref 'Subnets'
-      AutoScalingGroupName: 'AutoScalingGroup'
-      DesiredCapacity: 1
-      HealthCheckGracePeriod: 15
-      LaunchConfigurationName: !Ref 'LaunchConfiguration'
-      LoadBalancerNames: [!Ref 'LoadBalancer']
-      MaxSize: 1
-      MinSize: 1
 Outputs:
   Name:
     Description: Stack Name
@@ -76,6 +54,6 @@ Outputs:
     Export:
       Name: !Sub ${AWS::StackName}-Name
 
-  LoadBalancerEndpoint:
-    Description: LoadBalancers server's endpoint
-    Value: !GetAtt LoadBalancer.DNSName
+  EC2Endpoint:
+    Description: EC2 server's endpoint
+    Value: !GetAtt EC2InstanceV9.PublicDnsName
