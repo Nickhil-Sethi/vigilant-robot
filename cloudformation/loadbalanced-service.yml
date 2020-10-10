@@ -1,14 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  AWS CloudFormation Sample Template ELBWithLockedDownAutoScaledInstances:
-  Create a load balanced, Auto Scaled sample website where the instances are
-  locked down to only accept traffic from the load balancer. This example
-  creates an Auto Scaling group behind a load balancer with a simple health
-  check. The web site is available on port 80, however, the instances can be
-  configured to listen on any port (8888 by default). **WARNING** This template
-  creates one or more Amazon EC2 instances and an Application Load Balancer. You
-  will be billed for the AWS resources used if you create a stack from this
-  template.
+  Demo of a loadbalanced webservice that responds at / with 200 'hello world!'
 Parameters:
   VpcId:
     Type: 'AWS::EC2::VPC::Id'
@@ -98,6 +90,7 @@ Resources:
     Properties:
       Subnets: !Ref Subnets
       Type: 'network'
+
   NLBListener:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Properties:
@@ -107,12 +100,17 @@ Resources:
       LoadBalancerArn: !Ref NetworkLoadBalancer
       Port: 80
       Protocol: TCP
+
   NLBTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
       Port: 80
       Protocol: TCP
       VpcId: !Ref VpcId
+      HealthCheckEnabled: true
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      
   WebServerSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
