@@ -51,3 +51,8 @@ resource "aws_instance" "example" {
     Name = "terraform-example"
   }
 }
+
+output "public_ip" {
+  value = aws_instance.example.public_ip
+  description = "the public ip address of the deployed ec2 instance"
+}
